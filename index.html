@@ -1,0 +1,61 @@
+
+from flask import Flask, render_template, jsonify
+import csv
+import os
+
+app = Flask(__name__)
+
+DATA_FILE = "data_nilai_mahasiswa_10000.csv"
+
+
+@app.route("/")
+def home():
+    return render_template("index.html")
+
+
+@app.route("/api/data")
+def get_data():
+    path = os.path.join(
+        os.path.dirname(os.path.abspath(__file__)),
+        DATA_FILE
+    )
+
+    if not os.path.exists(path):
+        return jsonify({
+            "error": "File CSV tidak ditemukan",
+            "data": []
+        }), 404
+
+    data = []
+
+    try:
+        with open(path, "r", encoding="utf-8-sig", newline="") as file:
+            reader = csv.DictReader(file)
+
+            required = {"NIM", "Nama", "Prodi", "Nilai"}
+
+            if not required.issubset(set(reader.fieldnames or [])):
+                return jsonify({
+                    "error": "Format CSV tidak sesuai",
+                    "data": []
+                }), 400
+
+            for row in reader:
+                try:
+                    data.append({
+                        "NIM": row["NIM"],
+                        "Nama": row["Nama"],
+                        "Prodi": row["Prodi"],
+                        "Nilai": float(row["Nilai"])
+                    })
+                except (ValueError, TypeError):
+                    continue
+
+        return jsonify({"data": data})
+
+    except Exception as error:
+        return jsonify({"error": str(error), "data": []}), 500
+
+
+if __name__ == "__main__":
+    app.run(debug=True)
